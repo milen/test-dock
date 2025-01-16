@@ -2,10 +2,15 @@ name: Triggered Workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      message:
+        description: "Trigger origin"
+        required: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - name: Print Message
-        run: echo "Triggered by external force!"
+        run: |
+          echo "Triggered by: ${{ github.event.inputs.message }}"
