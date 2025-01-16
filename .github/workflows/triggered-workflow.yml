@@ -6,6 +6,12 @@ on:
       message:
         description: "Trigger origin"
         required: true
+      pr_number:
+        description: "Pull Request Number"
+        required: true
+      repo:
+        description: "Repository Name (owner/repo)"
+        required: true
 
 jobs:
   run:
@@ -14,3 +20,41 @@ jobs:
       - name: Print Message
         run: |
           echo "Triggered by: ${{ github.event.inputs.message }}"
+      - name: Perform Test
+        run: |
+          echo "Testing ..."
+          # mount docker and stuff!
+          VALIDATION_PASSED=true
+
+          # Save result for next step
+          echo "VALIDATION_PASSED=$VALIDATION_PASSED" >> $GITHUB_ENV
+
+      - name: Update PR Status in Target Repository
+        if: ${{ env.VALIDATION_PASSED == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.event.inputs.repo }}/statuses/${{ github.event.inputs.pr_number }} \
+            -d '{
+              "state": "failure",
+              "context": "external-check",
+              "description": "Validation failed"
+            }'
+
+      - name: Update PR Status as Passed
+        if: ${{ env.VALIDATION_PASSED == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.event.inputs.repo }}/statuses/${{ github.event.inputs.pr_number }} \
+            -d '{
+              "state": "success",
+              "context": "external-check",
+              "description": "Validation passed"
+            }'
